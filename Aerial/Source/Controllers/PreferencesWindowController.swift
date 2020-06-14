@@ -18,6 +18,7 @@ import Sparkle
 final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSource, NSOutlineViewDelegate {
 
     lazy var customVideosController: CustomVideoController = CustomVideoController()
+    lazy var updateReleaseController: UpdateReleaseController = UpdateReleaseController()
 
     // Main UI
     @IBOutlet weak var prefTabView: NSTabView!
@@ -39,6 +40,7 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
 
     @IBOutlet var popoverPower: NSPopover!
     @IBOutlet var popoverUpdate: NSPopover!
+    @IBOutlet var popoverWeather: NSPopover!
 
     // Videos tab
     @IBOutlet var outlineView: NSOutlineView!
@@ -56,13 +58,14 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
 
     @IBOutlet var fadeInOutModePopup: NSPopUpButton!
     @IBOutlet var popupVideoFormat: NSPopUpButton!
-    @IBOutlet var useHDRCheckbox: NSButton!
 
-    @IBOutlet var overrideOnBatteryCheckbox: NSButton!
-    @IBOutlet var alternatePopupVideoFormat: NSPopUpButton!
-    @IBOutlet var powerSavingOnLowBatteryCheckbox: NSButton!
+    @IBOutlet var menu1080pHDR: NSMenuItem!
+    @IBOutlet var menu4KHDR: NSMenuItem!
+
+    @IBOutlet var onBatteryPopup: NSPopUpButton!
+
     @IBOutlet var rightArrowKeyPlaysNextCheckbox: NSButton!
-    @IBOutlet var synchronizedModeCheckbox: NSButton!
+    //@IBOutlet var synchronizedModeCheckbox: NSButton!
     @IBOutlet var projectPageLink: NSButton!
 
     // Displays tab
@@ -78,45 +81,26 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
     @IBOutlet var displayMarginAdvancedMode: NSButton!
 
     @IBOutlet var displayMarginAdvancedEdit: NSButton!
-    // Text tab
-    @IBOutlet var showDescriptionsCheckbox: NSButton!
-    @IBOutlet var descriptionModePopup: NSPopUpButton!
-    @IBOutlet weak var fadeInOutTextModePopup: NSPopUpButton!
-    @IBOutlet var localizeForTvOS12Checkbox: NSButton!
-    @IBOutlet var currentLocaleLabel: NSTextField!
-    @IBOutlet weak var useCommunityCheckbox: NSButton!
-    @IBOutlet var ciOverrideLanguagePopup: NSPopUpButton!
 
-    @IBOutlet var currentFontLabel: NSTextField!
-    @IBOutlet var fontPickerButton: NSButton!
-    @IBOutlet var fontResetButton: NSButton!
+    // Info tab (replaces text)
+    @IBOutlet var infoTableView: NSTableView!
+    @IBOutlet var infoSettingsTableView: NSTableView!
+    @IBOutlet var infoContainerView: InfoContainerView!
 
-    @IBOutlet var changeCornerMargins: NSButton!
-    @IBOutlet var marginHorizontalTextfield: NSTextField!
-    @IBOutlet var marginVerticalTextfield: NSTextField!
-    @IBOutlet var secondaryMarginHorizontalTextfield: NSTextField!
-    @IBOutlet var secondaryMarginVerticalTextfield: NSTextField!
-    @IBOutlet var editMarginButton: NSButton!
-    @IBOutlet var editMarginsPanel: NSPanel!
-    @IBOutlet var editExtraMessagePanel: NSPanel!
+    @IBOutlet var infoBox: NSBox!
 
-    @IBOutlet var cornerContainer: NSTextField!
-    @IBOutlet var cornerTopLeft: NSButton!
-    @IBOutlet var cornerTopRight: NSButton!
-    @IBOutlet var cornerBottomLeft: NSButton!
-    @IBOutlet var cornerBottomRight: NSButton!
-    @IBOutlet var cornerRandom: NSButton!
+    @IBOutlet var infoSettingsView: InfoSettingsView!
 
-    @IBOutlet weak var extraCornerPopup: NSPopUpButton!
-    @IBOutlet var showClockCheckbox: NSButton!
-    @IBOutlet weak var withSecondsCheckbox: NSButton!
-    @IBOutlet var showExtraMessage: NSButton!
-    @IBOutlet var extraMessageTextField: NSTextField!
-    @IBOutlet var editExtraMessageButton: NSButton!
-    @IBOutlet var secondaryExtraMessageTextField: NSTextField!
-    @IBOutlet var extraMessageFontLabel: NSTextField!
-    @IBOutlet var extraFontPickerButton: NSButton!
-    @IBOutlet var extraFontResetButton: NSButton!
+    @IBOutlet var infoCommonView: InfoCommonView!
+
+    @IBOutlet var infoLocationView: InfoLocationView!
+    @IBOutlet var infoClockView: InfoClockView!
+    @IBOutlet var infoMessageView: InfoMessageView!
+    @IBOutlet var infoBatteryView: InfoBatteryView!
+    @IBOutlet var infoCountdownView: InfoCountdownView!
+    @IBOutlet var infoTimerView: InfoTimerView!
+    @IBOutlet var infoDateView: InfoDateView!
+    @IBOutlet var infoWeatherView: InfoWeatherView!
 
     // Time Tab
     @IBOutlet var iconTime1: NSImageCell!
@@ -181,19 +165,24 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
 
     @IBOutlet var automaticallyCheckForUpdatesCheckbox: NSButton!
     @IBOutlet var allowScreenSaverModeUpdateCheckbox: NSButton!
+    @IBOutlet var sparkleScreenSaverMode: NSPopUpButton!
     @IBOutlet var allowBetasCheckbox: NSButton!
     @IBOutlet var betaCheckFrequencyPopup: NSPopUpButton!
     @IBOutlet var lastCheckedSparkle: NSTextField!
 
+    @IBOutlet var silentInstallMenuItem: NSMenuItem!
     // Advanced Tab
     @IBOutlet weak var debugModeCheckbox: NSButton!
     @IBOutlet weak var showLogBottomClick: NSButton!
     @IBOutlet weak var logToDiskCheckbox: NSButton!
-    @IBOutlet var logMillisecondsButton: NSButton!
+
+    @IBOutlet var muteSoundCheckbox: NSButton!
 
     @IBOutlet var videoVersionsLabel: NSTextField!
     @IBOutlet var moveOldVideosButton: NSButton!
     @IBOutlet var trashOldVideosButton: NSButton!
+    @IBOutlet var languagePopup: NSPopUpButton!
+    @IBOutlet var currentLocaleLabel: NSTextField!
 
     // Video sets panel
     @IBOutlet var addVideoSetPanel: NSPanel!
@@ -201,6 +190,11 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
     @IBOutlet var addVideoSetConfirmButton: NSButton!
     @IBOutlet var addVideoSetCancelButton: NSButton!
     @IBOutlet var addVideoSetErrorLabel: NSTextField!
+
+    // Weather Panel
+    @IBOutlet var weatherPanel: NSPanel!
+    @IBOutlet var weatherCustomView: NSView!
+    @IBOutlet var weatherLabel: NSTextField!
 
     // Log Panel
     @IBOutlet var logPanel: NSPanel!
@@ -236,6 +230,10 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
     var locationManager: CLLocationManager?
     var sparkleUpdater: SUUpdater?
 
+    // Info tab
+    var infoSource: InfoTableSource?
+    var infoSettingsSource: InfoSettingsTableSource?
+
     @IBOutlet var displayView: DisplayView!
     public var appMode: Bool = false
 
@@ -252,7 +250,6 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
         return formatter
     }()
 
-    // MARK: - Init
     required init?(coder decoder: NSCoder) {
         self.fontManager = NSFontManager.shared
         debugLog("pwc init1")
@@ -288,11 +285,37 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
             name: Notification.Name.SUUpdaterWillRestart,
             object: nil)
 
-        // Starting the Sparkle update system
-        sparkleUpdater = SUUpdater.init(for: Bundle(for: PreferencesWindowController.self))
-        // We override the feeds for betas
-        if preferences.allowBetas {
-            sparkleUpdater?.feedURL = URL(string: "https://raw.githubusercontent.com/JohnCoates/Aerial/master/beta-appcast.xml")
+        if PrefsUpdates.checkForUpdates {
+            // Starting the Sparkle update system
+            sparkleUpdater = SUUpdater.init(for: Bundle(for: PreferencesWindowController.self))
+
+            // We override the feeds for betas
+            if preferences.allowBetas {
+                sparkleUpdater?.feedURL = URL(string: "https://raw.githubusercontent.com/JohnCoates/Aerial/master/beta-appcast.xml")
+            }
+
+            // On macOS 10.15, we simply disable the auto update check
+            if #available(OSX 10.15, *) {
+                sparkleUpdater!.automaticallyChecksForUpdates = false
+
+                // And we start our own probe thing
+                let autoUpdates = AutoUpdates.sharedInstance
+
+                // We make sure the required delay has elapsed
+                if autoUpdates.shouldCheckForUpdates(sparkleUpdater!) {
+                    autoUpdates.doProbingCheck()
+
+                    _ = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false, block: { (_) in
+                        self.checkForProbeResults(silent: true)
+                    })
+                }
+
+            } else {
+                sparkleUpdater!.automaticallyChecksForUpdates = true
+            }
+        } else {
+            sparkleUpdater = SUUpdater.init(for: Bundle(for: PreferencesWindowController.self))
+            sparkleUpdater!.automaticallyChecksForUpdates = false
         }
 
         // Setup the updates for the Logs
@@ -325,7 +348,7 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
 
         setupVideosTab()
         setupDisplaysTab()
-        setupTextTab()
+        setupInfoTab()
         setupTimeTab()
         setupBrightnessTab()
         setupCacheTab()
@@ -337,13 +360,8 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
         // To workaround our High Sierra issues with textfields, we have separate panels
         // that replicate the features and are editable. They are hidden unless needed.
         if #available(OSX 10.14, *) {
-            editMarginButton.isHidden = true
-            editExtraMessageButton.isHidden = true
             enterCoordinatesButton.isHidden = true
         } else {
-            marginHorizontalTextfield.isEnabled = false
-            marginVerticalTextfield.isEnabled = false
-            extraMessageTextField.isEnabled = false
             latitudeTextField.isEnabled = false
             longitudeTextField.isEnabled = false
         }
@@ -355,6 +373,14 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
                             owner: customVideosController,
                             topLevelObjects: &topLevelObjects) {
             errorLog("Could not load nib for CustomVideos, please report")
+        }
+
+        // And our new, hopefully temporary, updater
+        topLevelObjects = NSArray()
+        if !bundle.loadNibNamed(NSNib.Name("UpdateReleaseWindow"),
+                            owner: updateReleaseController,
+                            topLevelObjects: &topLevelObjects) {
+            errorLog("Could not load nib for UpdateReleaseWindow, please report")
         }
     }
 
@@ -371,8 +397,11 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
         if !downloadProgressIndicator.isHidden {
             quitConfirmationPanel.makeKeyAndOrderFront(self)
         } else {
-            // This seems needed for screensavers as our lifecycle is different from a regular app
+            // This seems needed for screensavers as our lifecycle is different
+            // from a regular app and we may be kept in memory by System Preferences
+            // and our settings won't get saved as they should be
             preferences.synchronize()
+
             logPanel.close()
             if appMode {
                 NSApplication.shared.terminate(nil)
@@ -500,6 +529,8 @@ final class PreferencesWindowController: NSWindowController, NSOutlineViewDataSo
             self.outlineView.reloadData()
             self.outlineView.expandItem(nil, expandChildren: true)
         }
+
+        // We update the info in the advanced tab
         let (description, total) = ManifestLoader.instance.getOldFilesEstimation()
         videoVersionsLabel.stringValue = description
         if total > 0 {

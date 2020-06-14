@@ -96,87 +96,48 @@ extension PreferencesWindowController {
                                                name: .AVPlayerItemDidPlayToEndTime,
                                                object: player.currentItem)
 
-        if preferences.overrideOnBattery {
-            overrideOnBatteryCheckbox.state = .on
-            changeBatteryOverrideState(to: true)
-        } else {
-            changeBatteryOverrideState(to: false)
-        }
-        if preferences.powerSavingOnLowBattery {
-            powerSavingOnLowBatteryCheckbox.state = .on
-        }
-        if !preferences.allowSkips {
+        onBatteryPopup.selectItem(at: PrefsVideos.onBatteryMode.rawValue)
+
+        if !PrefsVideos.allowSkips {
             rightArrowKeyPlaysNextCheckbox.state = .off
         }
 
+        // HEVC is available only in macOS 10.13+
         if #available(OSX 10.13, *) {
-            popupVideoFormat.selectItem(at: preferences.videoFormat!)
+            popupVideoFormat.selectItem(at: PrefsVideos.videoFormat.rawValue)
         } else {
-            preferences.videoFormat = Preferences.VideoFormat.v1080pH264.rawValue
-            popupVideoFormat.selectItem(at: preferences.videoFormat!)
+            PrefsVideos.videoFormat = VideoFormat.v1080pH264
+            popupVideoFormat.selectItem(at: PrefsVideos.videoFormat.rawValue)
             popupVideoFormat.isEnabled = false
         }
 
-        alternatePopupVideoFormat.selectItem(at: preferences.alternateVideoFormat!)
+        fadeInOutModePopup.selectItem(at: PrefsVideos.fadeMode.rawValue)
 
-        fadeInOutModePopup.selectItem(at: preferences.fadeMode!)
-
-        // We need catalina for HDR !
+        // We need catalina for HDR ! And we can't use right arrow to skip in Catalina
         if #available(OSX 10.15, *) {
-            if !preferences.useHDR {
-                useHDRCheckbox.state = .off
-            }
+            rightArrowKeyPlaysNextCheckbox.isEnabled = false
         } else {
-            useHDRCheckbox.state = .off
-            useHDRCheckbox.isEnabled = false
+            menu1080pHDR.isHidden = true
+            menu4KHDR.isHidden = true
         }
     }
 
     @IBAction func rightArrowKeyPlaysNextClick(_ sender: NSButton) {
         let onState = sender.state == .on
-        preferences.allowSkips = onState
+        PrefsVideos.allowSkips = onState
         debugLog("UI allowSkips \(onState)")
-    }
-
-    @IBAction func overrideOnBatteryClick(_ sender: NSButton) {
-        let onState = sender.state == .on
-        preferences.overrideOnBattery = onState
-        changeBatteryOverrideState(to: onState)
-        debugLog("UI overrideOnBattery \(onState)")
-    }
-
-    @IBAction func powerSavingOnLowClick(_ sender: NSButton) {
-        let onState = sender.state == .on
-        preferences.powerSavingOnLowBattery = onState
-        debugLog("UI powerSavingOnLow \(onState)")
-    }
-
-    @IBAction func alternateVideoFormatChange(_ sender: NSPopUpButton) {
-        debugLog("UI alternatePopupVideoFormat: \(sender.indexOfSelectedItem)")
-        preferences.alternateVideoFormat = sender.indexOfSelectedItem
-        changeBatteryOverrideState(to: true)
-    }
-
-    func changeBatteryOverrideState(to: Bool) {
-        alternatePopupVideoFormat.isEnabled = to
-        if !to || (to && preferences.alternateVideoFormat != Preferences.AlternateVideoFormat.powerSaving.rawValue) {
-            powerSavingOnLowBatteryCheckbox.isEnabled = to
-        } else {
-            powerSavingOnLowBatteryCheckbox.isEnabled = false
-        }
     }
 
     @IBAction func popupVideoFormatChange(_ sender: NSPopUpButton) {
         debugLog("UI popupVideoFormat: \(sender.indexOfSelectedItem)")
-        preferences.videoFormat = sender.indexOfSelectedItem
+        PrefsVideos.videoFormat = VideoFormat(rawValue: sender.indexOfSelectedItem)!
         preferences.synchronize()
         outlineView.reloadData()
     }
 
-    @IBAction func useHDRChange(_ sender: NSButton) {
-        let onState = sender.state == .on
-        preferences.useHDR = onState
-        debugLog("UI useHDR \(onState)")
+    @IBAction func onBatteryModeChange(_ sender: NSPopUpButton) {
+        debugLog("UI onBatteryModeChange \(sender.indexOfSelectedItem)")
+        PrefsVideos.onBatteryMode = OnBatteryMode(rawValue: sender.indexOfSelectedItem)!
     }
 
     @IBAction func helpButtonClick(_ button: NSButton!) {
@@ -189,13 +150,10 @@ extension PreferencesWindowController {
 
     @IBAction func fadeInOutModePopupChange(_ sender: NSPopUpButton) {
         debugLog("UI fadeInOutMode: \(sender.indexOfSelectedItem)")
-        preferences.fadeMode = sender.indexOfSelectedItem
-        preferences.synchronize()
+        PrefsVideos.fadeMode = FadeMode(rawValue: sender.indexOfSelectedItem)!
     }
 
     func updateDownloads(done: Int, total: Int, progress: Double) {
-        print("VMQueue: done : \(done) \(total) \(progress)")
-
         if total == 0 {
             downloadProgressIndicator.isHidden = true
             downloadStopButton.isHidden = true
@@ -241,6 +199,13 @@ extension PreferencesWindowController {
         }
     }
 
+    // MARK: Wikipedia popup link
+    @IBAction func linkToWikipediaDolbyVisionClick(_ sender: Any) {
+        let workspace = NSWorkspace.shared
+        let url = URL(string: "https://en.wikipedia.org/wiki/Dolby_Laboratories#Video_processing")!
+        workspace.open(url)
+    }
+
     // MARK: Video playback
 
     // Rewind preview video when reaching end
@@ -264,28 +229,36 @@ extension PreferencesWindowController {
                         action: #selector(PreferencesWindowController.outlineViewCheck4K(button:)),
                         keyEquivalent: "",
                         at: 1)
+        menu.insertItem(withTitle: "Check Only Day",
+                        action: #selector(PreferencesWindowController.outlineViewCheckDay(button:)),
+                        keyEquivalent: "",
+                        at: 2)
+        menu.insertItem(withTitle: "Check Only Night",
+                        action: #selector(PreferencesWindowController.outlineViewCheckNight(button:)),
+                        keyEquivalent: "",
+                        at: 3)
         menu.insertItem(withTitle: "Check All",
                         action: #selector(PreferencesWindowController.outlineViewCheckAll(button:)),
                         keyEquivalent: "",
-                        at: 2)
+                        at: 4)
         menu.insertItem(withTitle: "Uncheck All",
                         action: #selector(PreferencesWindowController.outlineViewUncheckAll(button:)),
                         keyEquivalent: "",
-                        at: 3)
-        menu.insertItem(NSMenuItem.separator(), at: 4)
+                        at: 5)
+        menu.insertItem(NSMenuItem.separator(), at: 6)
         menu.insertItem(withTitle: "Download Checked",
                         action: #selector(PreferencesWindowController.outlineViewDownloadChecked(button:)),
                         keyEquivalent: "",
-                        at: 5)
+                        at: 7)
         menu.insertItem(withTitle: "Download All",
                         action: #selector(PreferencesWindowController.outlineViewDownloadAll(button:)),
                         keyEquivalent: "",
-                        at: 6)
-        menu.insertItem(NSMenuItem.separator(), at: 7)
+                        at: 8)
+        menu.insertItem(NSMenuItem.separator(), at: 9)
         menu.insertItem(withTitle: "Custom Videos...",
                         action: #selector(PreferencesWindowController.outlineViewCustomVideos(button:)),
                         keyEquivalent: "",
-                        at: 8)
+                        at: 10)
 
         let event = NSApp.currentEvent
         NSMenu.popUpContextMenu(menu, with: event!, for: button)
@@ -303,21 +276,45 @@ extension PreferencesWindowController {
         setAllVideos(inRotation: true)
     }
 
+    @objc func outlineViewCheckDay(button: NSButton) {
+        guard let videos = videos else {
+            return
+        }
+
+        for video in videos {
+            preferences.setVideo(videoID: video.id,
+                                 inRotation: video.timeOfDay == "day",
+                                 synchronize: false)
+        }
+        preferences.synchronize()
+
+        outlineView.reloadData()
+    }
+
+    @objc func outlineViewCheckNight(button: NSButton) {
+        guard let videos = videos else {
+            return
+        }
+
+        for video in videos {
+            preferences.setVideo(videoID: video.id,
+                                 inRotation: video.timeOfDay != "day",
+                                 synchronize: false)
+        }
+        preferences.synchronize()
+
+        outlineView.reloadData()
+    }
+
     @objc func outlineViewCheck4K(button: NSButton) {
         guard let videos = videos else {
             return
         }
 
         for video in videos {
-            if video.url4KHEVC != "" {
-                preferences.setVideo(videoID: video.id,
-                                     inRotation: true,
-                                     synchronize: false)
-            } else {
-                preferences.setVideo(videoID: video.id,
-                                     inRotation: false,
-                                     synchronize: false)
-            }
+            preferences.setVideo(videoID: video.id,
+                                 inRotation: video.has4KVersion(),
+                                 synchronize: false)
         }
         preferences.synchronize()
 
@@ -630,9 +627,8 @@ extension PreferencesWindowController {
             let bundle = Bundle(for: PreferencesWindowController.self)
 
             // Use -dark icons in macOS 10.14+ Dark Mode
-            let timeManagement = TimeManagement.sharedInstance
             var postfix = ""
-            if timeManagement.isDarkModeEnabled() {
+            if DarkMode.isEnabled() {
                 postfix = "-dark"
             }
 
@@ -697,7 +693,7 @@ extension PreferencesWindowController {
         case let video as AerialVideo:
             player = AVPlayer()
             playerView.player = player
-            player.isMuted = true
+            player.isMuted = PrefsAdvanced.muteSound
 
             debugLog("Playing this preview \(video)")
             // Workaround for cached videos generating online traffic
@@ -737,6 +733,7 @@ extension PreferencesWindowController {
             fatalError("unhandled item in heightOfRowByItem for \(item)")
         }
     }
+
     func outlineView(_ outlineView: NSOutlineView, sizeToFitWidthOfColumn column: Int) -> CGFloat {
         return 0
     }

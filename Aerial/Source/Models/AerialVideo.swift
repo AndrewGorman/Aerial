@@ -46,16 +46,28 @@ private let spaceVideos = [
 ]
 
 private let seaVideos = [
-    "83C65C90-270C-4490-9C69-F51FE03D7F06", // Seals
-    "BA4ECA11-592F-4727-9221-D2A32A16EB28", // Palau Jellies
+    "83C65C90-270C-4490-9C69-F51FE03D7F06", // Seals (outdated)
+    "BA4ECA11-592F-4727-9221-D2A32A16EB28", // Palau Jellies *
     "F07CC61B-30FC-4614-BDAD-3240B61F6793", // Palau Coral
     "6143116D-03BB-485E-864E-A8CF58ACF6F1", // Kelp
     "2B30E324-E4FF-4CC1-BA45-A958C2D2B2EC", // Barracuda
-    "E580E5A5-0888-4BE8-A4CA-F74A18A643C3", // Palau Jellies
-    "EC3DC957-D4C2-4732-AACE-7D0C0F390EC8", // Palau Jellies
+    "E580E5A5-0888-4BE8-A4CA-F74A18A643C3", // Palau Jellies *
+    "EC3DC957-D4C2-4732-AACE-7D0C0F390EC8", // Palau Jellies *
     "581A4F1A-2B6D-468C-A1BE-6F473F06D10B", // Sea Stars
     "687D03A2-18A5-4181-8E85-38F3A13409B9", // Bumpheads
     "537A4DAB-83B0-4B66-BCD1-05E5DBB4A268", // Jacks
+    "C7AD3D0A-7EDF-412C-A237-B3C9D27381A1", // Alaskan Jellies *
+    "C6DC4E54-1130-44F8-AF6F-A551D8E8A181", // Alaskan Jellies *
+    "27A37B0F-738D-4644-A7A4-E33E7A6C1175", // California Dolphins
+    "EB3F48E7-D30F-4079-858F-1A61331D5026", // California Kelp Forest
+    "CE9B5D5B-B6E7-47C5-8C04-59BF182E98FB", // Costa Rica Dolphins
+    "58C75C62-3290-47B8-849C-56A583173570", // Cownose Rays
+    "3716DD4B-01C0-4F5B-8DD6-DB771EC472FB", // Gray Reef Sharks
+    "DD47D8E1-CB66-4C12-BFEA-2ADB0D8D1E2E", // Humpback Whale
+    "82175C1F-153C-4EC8-AE37-2860EA828004", // Red Sea Coral
+    "149E7795-DBDA-4F5D-B39A-14712F841118", // Tahiti Waves *
+    "8C31B06F-91A4-4F7C-93ED-56146D7F48B9", // Tahiti Waves *
+    "391BDF6E-3279-4CE1-9CA5-0F82811452D7", // Seals (new version)
 ]
 
 private let timeInformation = [
@@ -102,7 +114,7 @@ private let timeInformation = [
 
 final class AerialVideo: CustomStringConvertible, Equatable {
     static func ==(lhs: AerialVideo, rhs: AerialVideo) -> Bool {
-        return lhs.id == rhs.id && lhs.url1080pHEVC == rhs.url1080pHEVC
+        return lhs.id == rhs.id // TODO && lhs.url1080pHEVC == rhs.url1080pHEVC
     }
 
     let id: String
@@ -111,11 +123,7 @@ final class AerialVideo: CustomStringConvertible, Equatable {
     let type: String
     let timeOfDay: String
 
-    var url1080pH264: String
-    let url1080pHEVC: String
-    let url1080pHDR: String
-    let url4KHEVC: String
-    let url4KHDR: String
+    var urls: [VideoFormat: String]
 
     var sources: [Manifests]
     let poi: [String: String]
@@ -132,62 +140,23 @@ final class AerialVideo: CustomStringConvertible, Equatable {
 
     // MARK: - Public getter
     var url: URL {
-        let preferences = Preferences.sharedInstance
-        let timeManagement = TimeManagement.sharedInstance
-        // We may override on battery
-        if preferences.overrideOnBattery && timeManagement.isOnBattery() {
-            return getClosestAvailable(wanted: preferences.alternateVideoFormat!-1) // Slightly dirty
-        }
-
-        return getClosestAvailable(wanted: preferences.videoFormat!)
+        return getClosestAvailable(wanted: PrefsVideos.videoFormat)
     }
 
     // Returns the closest video we have in the manifests
-    func getClosestAvailable(wanted: Int) -> URL {
-        if wanted == Preferences.VideoFormat.v4KHEVC.rawValue {
-            return getVideoFormatFrom(best: .v4KHEVC, option2: .v1080pHEVC, option3: .v1080pH264)
-        } else if wanted == Preferences.VideoFormat.v1080pHEVC.rawValue {
-            return getVideoFormatFrom(best: .v1080pHEVC, option2: .v1080pH264, option3: .v4KHEVC)
+    private func getClosestAvailable(wanted: VideoFormat) -> URL {
+        if urls[wanted] != "" {
+            return URL(string: urls[wanted]!)!
         } else {
-            return getVideoFormatFrom(best: .v1080pH264, option2: .v1080pHEVC, option3: .v4KHEVC)
-        }
-    }
+            // Fallback
+            if urls[.v4KHEVC] != "" {
+                return URL(string: urls[.v4KHEVC]!)!
 
-    // Helper to find the best available format from the 3 options given, in that order
-    func getVideoFormatFrom(best: Preferences.VideoFormat, option2: Preferences.VideoFormat, option3: Preferences.VideoFormat) -> URL {
-        if urlFor(videoFormat: best) != "" {
-            return getDynamicRange(wanted: best)
-        } else if urlFor(videoFormat: option2) != "" {
-            return getDynamicRange(wanted: option2)
-        } else {
-            return getDynamicRange(wanted: option3)
-        }
-    }
-
-    // Helper to get the url for a given format
-    private func urlFor(videoFormat: Preferences.VideoFormat) -> String {
-        if videoFormat == .v4KHEVC {
-            return url4KHEVC
-        } else if videoFormat == .v1080pHEVC {
-            return url1080pHEVC
-        } else {
-            return url1080pH264
-        }
-    }
-
-    // Helper to get the correct Dynamic Range version based on Format, preferences, and OS availability
-    func getDynamicRange(wanted: Preferences.VideoFormat) -> URL {
-        let preferences = Preferences.sharedInstance
-        if #available(OSX 10.15, *), preferences.useHDR && wanted == .v4KHEVC {
-            return URL(string: url4KHDR)!
-        } else if wanted == .v4KHEVC {
-            return URL(string: url4KHEVC)!
-        } else if #available(OSX 10.15, *), preferences.useHDR && wanted == .v1080pHEVC {
-            return URL(string: url1080pHDR)!
-        } else if wanted == .v1080pHEVC {
-            return URL(string: url1080pHEVC)!
-        } else {
-            return URL(string: url1080pH264)!
+            } else if urls[.v1080pHEVC] != "" {
+                return URL(string: urls[.v1080pHEVC]!)!
+            } else { // Last resort
+                return URL(string: urls[.v1080pH264]!)!
+            }
         }
     }
 
@@ -197,11 +166,7 @@ final class AerialVideo: CustomStringConvertible, Equatable {
          secondaryName: String,
          type: String,
          timeOfDay: String,
-         url1080pH264: String,
-         url1080pHEVC: String,
-         url1080pHDR: String,
-         url4KHEVC: String,
-         url4KHDR: String,
+         urls: [VideoFormat: String],
          manifest: Manifests,
          poi: [String: String],
          communityPoi: [String: String]
@@ -242,11 +207,7 @@ final class AerialVideo: CustomStringConvertible, Equatable {
             self.timeOfDay = timeOfDay
         }
 
-        self.url1080pH264 = url1080pH264
-        self.url1080pHEVC = url1080pHEVC
-        self.url1080pHDR = url1080pHDR
-        self.url4KHEVC = url4KHEVC
-        self.url4KHDR = url4KHDR
+        self.urls = urls
         self.sources = [manifest]
         self.poi = poi
         self.communityPoi = communityPoi
@@ -255,17 +216,16 @@ final class AerialVideo: CustomStringConvertible, Equatable {
         updateDuration()    // We need to have the video duration
     }
 
-    // swiftlint:disable:next cyclomatic_complexity 
     func updateDuration() {
         // We need to retrieve video duration from the cached files.
         // This is a workaround as currently, the VideoCache infrastructure
         // relies on AVAsset with an external URL all the time, even when
         // working on a cached copy which makes the native duration retrieval fail
 
-        // Not the prettiest code !
         let fileManager = FileManager.default
 
-        // And with local custom videos it's worse !
+        // With custom videos, we may already store the local path
+        // If so, check it
         if self.url.absoluteString.starts(with: "file") {
             if fileManager.fileExists(atPath: self.url.path) {
                 let asset = AVAsset(url: self.url)
@@ -275,49 +235,27 @@ final class AerialVideo: CustomStringConvertible, Equatable {
                 self.duration = 0
             }
         } else {
-            // let cacheDirectoryPath = VideoCache.cacheDirectory! as NSString
+            // If not, iterate through all possible versions to see if any is cached
+            for format in VideoFormat.allCases {
+                // swiftlint:disable:next for_where
+                if urls[format] != "" {
+                    let path = VideoCache.cachePath(forFilename: (URL(string: urls[format]!)!.lastPathComponent))!
 
-            var videoCache1080pH264Path = "", videoCache1080pHEVCPath = "",
-                videoCache4KHEVCPath = "", videoCache1080pHDRPath = "",
-                videoCache4KHDRPath = ""
-
-            if self.url1080pH264 != "" {
-                videoCache1080pH264Path = VideoCache.cachePath(forFilename: (URL(string: url1080pH264)?.lastPathComponent)!)!
-            }
-            if self.url1080pHEVC != "" {
-                videoCache1080pHEVCPath = VideoCache.cachePath(forFilename: (URL(string: url1080pHEVC)?.lastPathComponent)!)!
-            }
-            if self.url4KHEVC != "" {
-                videoCache4KHEVCPath = VideoCache.cachePath(forFilename: (URL(string: url4KHEVC)?.lastPathComponent)!)!
-            }
-            if self.url1080pHDR != "" {
-                videoCache1080pHDRPath = VideoCache.cachePath(forFilename: (URL(string: url1080pHDR)?.lastPathComponent)!)!
-            }
-            if self.url4KHDR != "" {
-                videoCache4KHDRPath = VideoCache.cachePath(forFilename: (URL(string: url4KHDR)?.lastPathComponent)!)!
+                    if fileManager.fileExists(atPath: path) {
+                        let asset = AVAsset(url: URL(fileURLWithPath: path))
+                        self.duration = CMTimeGetSeconds(asset.duration)
+                        //print("duration found \(self.duration)")
+                        return
+                    }
+                }
             }
 
-            if fileManager.fileExists(atPath: videoCache4KHEVCPath) {
-                let asset = AVAsset(url: URL(fileURLWithPath: videoCache4KHEVCPath))
-                self.duration = CMTimeGetSeconds(asset.duration)
-            } else if fileManager.fileExists(atPath: videoCache4KHDRPath) {
-                let asset = AVAsset(url: URL(fileURLWithPath: videoCache4KHDRPath))
-                self.duration = CMTimeGetSeconds(asset.duration)
-            } else if fileManager.fileExists(atPath: videoCache1080pHEVCPath) {
-                let asset = AVAsset(url: URL(fileURLWithPath: videoCache1080pHEVCPath))
-                self.duration = CMTimeGetSeconds(asset.duration)
-            } else if fileManager.fileExists(atPath: videoCache1080pHDRPath) {
-                let asset = AVAsset(url: URL(fileURLWithPath: videoCache1080pHDRPath))
-                self.duration = CMTimeGetSeconds(asset.duration)
-            } else if fileManager.fileExists(atPath: videoCache1080pH264Path) {
-                let asset = AVAsset(url: URL(fileURLWithPath: videoCache1080pH264Path))
-                self.duration = CMTimeGetSeconds(asset.duration)
-            } else {
-                debugLog("Could not determine duration, video is not cached in any format")
-                self.duration = 0
-            }
-
+            // print("no duration for \(self)")
         }
+    }
+
+    func has4KVersion() -> Bool {
+        return urls[.v4KHEVC] != ""
     }
 
     var description: String {
@@ -326,11 +264,7 @@ final class AerialVideo: CustomStringConvertible, Equatable {
         name=\(name),
         type=\(type),
         timeofDay=\(timeOfDay),
-        url1080pH264=\(url1080pH264),
-        url1080pHEVC=\(url1080pHEVC),
-        url1080pHDR=\(url1080pHDR),
-        url4KHEVC=\(url4KHEVC)"
-        url4KHDR=\(url4KHDR)"
+        urls=\(urls)
         """
     }
 }

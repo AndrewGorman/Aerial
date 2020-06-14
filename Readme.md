@@ -4,7 +4,7 @@
 
 # Aerial - Apple TV Aerial Views Screen Saver
 
-Aerial is a Mac screensaver based on the new Apple TV screensaver that displays the Aerial movies Apple shot over New York, San Francisco, Hawaii, China, etc. Starting with version 1.4, this also includes the new ISS videos available in tvOS 12!
+Aerial is a Mac screensaver based on the new Apple TV screensaver that displays the Aerial movies Apple shot over New York, San Francisco, Hawaii, China, etc. Starting with version 1.6, this also includes the new undersea videos available in tvOS 13 ! See here for a [complete list of available videos.](https://aerial-screensavers.netlify.com)
 
 Aerial is completely open source, so feel free to contribute to its development.
 
@@ -15,56 +15,53 @@ Aerial is completely open source, so feel free to contribute to its development.
 [![Code Climate](https://codeclimate.com/github/JohnCoates/Aerial/badges/gpa.svg)](https://codeclimate.com/github/JohnCoates/Aerial)
 [![codecov](https://codecov.io/gh/JohnCoates/Aerial/branch/master/graph/badge.svg)](https://codecov.io/gh/JohnCoates/Aerial)
 
-###### Windows user? Try [cDima/Aerial](https://github.com/cDima/Aerial/) Linux user? Try [graysky2/xscreensaver-aerial](https://github.com/graysky2/xscreensaver-aerial/)
+###### Windows user? Try [OrangeJedi/Aerial](https://github.com/OrangeJedi/Aerial) Linux user? Try [graysky2/xscreensaver-aerial](https://github.com/graysky2/xscreensaver-aerial/)
 
 Aerial was started in 2015 by John Coates ([Twitter](https://twitter.com/JohnCoatesDev), [Email](mailto:john@johncoates.me))
 
-Starting with version 1.4, Aerial is also maintained by [Guillaume Louel](https://github.com/glouel) ([Twitter](https://twitter.com/C_Wiz), [PayPal](https://paypal.me/glouel?locale.x=fr_FR)).
+Starting with version 1.4, Aerial is maintained by [Guillaume Louel](https://github.com/glouel) ([Twitter](https://twitter.com/C_Wiz)). If you are looking to support the development of Aerial, feel free to donate using the following button [![Support via PayPal][paypal-button]][paypal-glouel].
+
+[paypal-button]: https://img.shields.io/badge/Donate-PayPal-green.svg
+[paypal-glouel]: https://www.paypal.me/glouel/
 
 You can see a list of contributors [here](https://github.com/JohnCoates/Aerial/graphs/contributors).
 
 ## Installation
 
-**Warning :** If you have upgraded to macOS Catalina, you will notice that there are some new restrictions applied to screensavers. You can check [this issue](https://github.com/JohnCoates/Aerial/issues/801) for more information about the current status of Aerial on macOS 10.15.  
+**Please note :** Starting with Catalina, Aerial will only notify you of new versions, but won't be able to automatically update itself. This is a limitation of macOS Catalina.
 
-**Are you using Little Snitch ?** You may need to configure your firewall to allow Aerial to connect to the internet. Also Little Snitch may include a rule that forbids connexions to `raw.githubusercontent.com`. This will block Aerial's automatic updates and can cause the screensaver to misbehave. We highly recommend you either remove that rule or disable Aerial's automatic updates. You can find more information in our [FAQ](https://github.com/JohnCoates/Aerial/blob/master/Documentation/Troubleshooting.md).
-
-Aerial now includes an auto-update mechanism using the [Sparkle open-source project](https://github.com/sparkle-project/Sparkle). You will need to download it manually the first time :
+Installation instructions (latest versions require macOS 10.12 or above) :
 
 1. Quit **System Preferences**.
-2. [Download the latest release of `Aerial.saver.zip`](https://github.com/JohnCoates/Aerial/releases/latest). 
+2. [Download the latest release of `Aerial.saver.zip`](https://github.com/JohnCoates/Aerial/releases/latest). Alternatively, you can find the [latest beta here](https://github.com/JohnCoates/Aerial/releases). 
 3. Unzip the downloaded file (if you use Safari, it should already be done for you).
-4. Double-click `Aerial.saver`; it will open in `System Preferences` > `Desktop & Screen Saver` and ask you if you want to install for all users or for your user only. Be aware that installing for all users will require a password at install **and each subsequent update, including auto-updates.** By default, Aerial will still share its video cache if you install multiple times on the same system for each user.
-
-After installation, **if you are upgrading from a previous version**, we suggest you check your cache path settings as 1.6.0 includes some significant changes to prepare for macOS Catalina. 
+4. Double-click `Aerial.saver`; it will open in `System Preferences` > `Desktop & Screen Saver` and ask you if you want to install for all users or for your user only. Be aware that installing for all users will require a password at install **and each subsequent update, including auto-updates.** 
 
 Need more information on install, setup, or uninstall ? Or want to install via homebrew ? Check our extended [instructions here](Documentation/Installation.md). Curious about auto-updates ? [Have a look here](Documentation/AutoUpdates.md).
 
-## What's new in Aerial 1.6.0 (September 26 2019)?
+## What's new in Aerial 1.9.0 (May 25, 2020)?
 
-- Support for the 15 new videos included in tvOS 13, including the ten new underwater seascape videos and five new ISS space videos. 
+![Capture d’écran 2020-05-25 à 15 46 42](https://user-images.githubusercontent.com/37544189/82818568-338ba580-9e9f-11ea-8f26-90b23958f587.jpg)
 
-![Capture d’écran 2019-09-26 à 15 29 20](https://user-images.githubusercontent.com/37544189/65692345-a9224600-e072-11e9-8c60-b0e0e546ad31.jpg)
+- Weather ! Aerial can now display current conditions for a location of your choice using Yahoo! Weather's API. 
 
-- The HDR versions of videos can now be played by Aerial. This requires macOS 10.15 Catalina, please note that you will need to redownload the HDR versions of those videos. 
+This feature can be enabled and configured inside the Info tab. 
 
-![Capture d’écran 2019-09-26 à 15 26 34](https://user-images.githubusercontent.com/37544189/65692344-a889af80-e072-11e9-8eac-361ba1f5d980.jpg)
+![Capture d’écran 2020-05-25 à 15 44 37](https://user-images.githubusercontent.com/37544189/82818567-32f30f00-9e9f-11ea-81d1-cce630b224eb.jpg)
 
-- Improved advanced multi monitor support. Advanced users can now finely specify the distance between each of their screens in the new "Spanned" mode included in Aerial 1.5.0, in order to accomodate more complex configurations.
+You can either manually specify a location, or use your mac's location services to provide Aerial with your most recent location when it starts. To preserve your privacy, should you wish to use location services, Aerial will only provide your location with an approximate 1km margin of error. 
 
-![Capture d’écran 2019-09-26 à 15 24 08](https://user-images.githubusercontent.com/37544189/65692342-a889af80-e072-11e9-81ad-de70c7b2f0a1.jpg)
+- Graphical battery indicator. The old text battery indicator was replaced with a nicer graphical one :
 
-- Support for macOS 10.15 Catalina. macOS Catalina includes new restrictions on third party screen savers, which impact some of the functionnalities. We highly suggest that current and would be Catalina users check this issue for more information on those restrictions : https://github.com/JohnCoates/Aerial/issues/801
+<center><img width="240" alt="Capture d’écran 2020-05-25 à 15 58 33" src="https://user-images.githubusercontent.com/37544189/82819429-a6e1e700-9ea0-11ea-9c1f-0a371413174b.png"></center>
 
-![Capture d’écran 2019-09-26 à 15 23 45](https://user-images.githubusercontent.com/37544189/65692340-a889af80-e072-11e9-8109-cdcd8f55fe86.jpg)
-
-Aerial is also now properly signed and notarized to comply with new restrictions introduced in macOS 10.15 Catalina. 
+This [version](https://github.com/JohnCoates/Aerial/releases/tag/v1.9.0) also includes several extra refinements such as adding the ability to override the 12/24 hour format for the clock, and also includes Italian translation thanks to @marguglio. 
 
 You can find more about [version changes here](Documentation/ChangeLog.md).
 
 ## Compatibility
 
-Aerial is written in Swift, which requires OS X Mavericks (10.9) or above.  
+Aerial is written in Swift, which requires OS X Sierra (10.12) or above. Aerial 1.7.1 is the last version that supports macOS 10.9. 
 
 ## Community
 
@@ -73,6 +70,8 @@ Aerial is written in Swift, which requires OS X Mavericks (10.9) or above.
 - **Can you translate videos names and their descriptions?**. Awesome! [Read here for details](Resources/Community/Readme.md) on how to help us.
 - **Have a feature request?** [Open an issue](https://github.com/JohnCoates/Aerial/issues/new). Tell us why it would be useful, and why you and others would want it.
 - **Curious about the videos and on a slow connection?** Check [this guide](https://paper.dropbox.com/doc/Aerial-macOS-screen-saver-list-with-version-1.4.6-HvOeL0gNhLpqpIFgmLHaS) by [Hidehiro Nagaoka](https://github.com/hidehiro98).
+- **Just want to see the videos?** [A complete list of available wallpapers  is available online](https://aerial-screensavers.netlify.com). From [TawfiqH](https://github.com/Tawfiqh/aerialWallpapers).
+
 
 ## Multilanguage support
 

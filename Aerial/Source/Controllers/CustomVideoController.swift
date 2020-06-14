@@ -10,8 +10,13 @@ import Foundation
 import AppKit
 import AVKit
 
-class CustomVideoController: NSWindowController, NSWindowDelegate {
+class CustomVideoController: NSWindowController, NSWindowDelegate, NSDraggingDestination {
     @IBOutlet var mainPanel: NSWindow!
+
+    // This is the panel workaround for Catalina
+    @IBOutlet var addFolderCatalinaPanel: NSPanel!
+    @IBOutlet var addFolderTextField: NSTextField!
+
     @IBOutlet var folderOutlineView: NSOutlineView!
     @IBOutlet var topPathControl: NSPathControl!
 
@@ -36,7 +41,10 @@ class CustomVideoController: NSWindowController, NSWindowDelegate {
 
     @IBOutlet var durationLabel: NSTextField!
     @IBOutlet var resolutionLabel: NSTextField!
+    @IBOutlet var cvcMenu: NSMenu!
 
+    @IBOutlet var menuRemoveFolderAndVideos: NSMenuItem!
+    @IBOutlet var menuRemoveVideo: NSMenuItem!
     var currentFolder: Folder?
     var currentAsset: Asset?
     var currentAssetDuration: Int?
@@ -60,8 +68,19 @@ class CustomVideoController: NSWindowController, NSWindowDelegate {
     override func awakeFromNib() {
         if !hasAwokenAlready {
             debugLog("cvcawake")
+            //self.menu = cvcMenu
+
             folderOutlineView.dataSource = self
             folderOutlineView.delegate = self
+            folderOutlineView.menu = cvcMenu
+            cvcMenu.delegate = self
+
+            if #available(OSX 10.13, *) {
+                folderOutlineView.registerForDraggedTypes([.fileURL, .URL])
+            } else {
+                // Fallback on earlier versions
+            }
+
             poiTableView.dataSource = self
             poiTableView.delegate = self
 
@@ -117,20 +136,35 @@ class CustomVideoController: NSWindowController, NSWindowDelegate {
 
     // MARK: - Add a new folder of videos to parse
     @IBAction func addFolderButton(_ sender: NSButton) {
-        let addFolderPanel = NSOpenPanel()
-        addFolderPanel.allowsMultipleSelection = false
-        addFolderPanel.canChooseDirectories = true
-        addFolderPanel.canCreateDirectories = false
-        addFolderPanel.canChooseFiles = false
-        addFolderPanel.title = "Select a folder containing videos"
+        if #available(OSX 10.15, *) {
+            // On Catalina, we can't use NSOpenPanel right now
+            addFolderTextField.stringValue = ""
+            addFolderCatalinaPanel.makeKeyAndOrderFront(self)
+        } else {
+            let addFolderPanel = NSOpenPanel()
+            addFolderPanel.allowsMultipleSelection = false
+            addFolderPanel.canChooseDirectories = true
+            addFolderPanel.canCreateDirectories = false
+            addFolderPanel.canChooseFiles = false
+            addFolderPanel.title = "Select a folder containing videos"
 
-        addFolderPanel.begin { (response) in
-            if response.rawValue == NSFileHandlingPanelOKButton {
-                self.processPathForVideos(url: addFolderPanel.url!)
+            addFolderPanel.begin { (response) in
+                if response.rawValue == NSFileHandlingPanelOKButton {
+                    self.processPathForVideos(url: addFolderPanel.url!)
+                }
+                addFolderPanel.close()
             }
-            addFolderPanel.close()
+        }
+    }
+
+    @IBAction func addFolderCatalinaConfirm(_ sender: Any) {
+        let strFolder = addFolderTextField.stringValue
+
+        if FileManager.default.fileExists(atPath: strFolder as String) {
+            self.processPathForVideos(url: URL(fileURLWithPath: strFolder, isDirectory: true))
         }
 
+        addFolderCatalinaPanel.close()
     }
 
     func processPathForVideos(url: URL) {
@@ -257,6 +291,33 @@ class CustomVideoController: NSWindowController, NSWindowDelegate {
         }
     }
 
+    // MARK: - Context menu
+    @IBAction func menuRemoveFolderAndVideoClick(_ sender: NSMenuItem) {
+        if let folder = sender.representedObject as? Folder {
+            let manifestInstance = ManifestLoader.instance
+
+            if let cvf = manifestInstance.customVideoFolders {
+                cvf.folders.remove(at: cvf.getFolderIndex(withUrl: folder.url))
+            }
+        }
+        folderOutlineView.reloadData()
+    }
+
+    @IBAction func menuRemoveVideoClick(_ sender: NSMenuItem) {
+        if let asset = sender.representedObject as? Asset {
+            let manifestInstance = ManifestLoader.instance
+
+            if let cvf = manifestInstance.customVideoFolders {
+                for fld in cvf.folders {
+                    let index = fld.getAssetIndex(withUrl: asset.url)
+                    if index > -1 {
+                        fld.assets.remove(at: index)
+                    }
+                }
+            }
+        }
+        folderOutlineView.reloadData()
+    }
 }
 
 // MARK: - Data source for side bar
@@ -368,8 +429,6 @@ extension CustomVideoController: NSOutlineViewDelegate {
                 timeTextStepper.maxValue = Double(currentAssetDuration!)
                 timeTextFormatter.minimum = 0
                 timeTextFormatter.maximum = NSNumber(value: currentAssetDuration!)
-                //timeTableFormatter.minimum = 0
-                //timeTableFormatter.maximum = NSNumber(value: currentAssetDuration!)
 
                 durationLabel.stringValue = String(currentAssetDuration!) + " seconds"
                 resolutionLabel.stringValue = crString
@@ -392,6 +451,34 @@ extension CustomVideoController: NSOutlineViewDelegate {
         guard let track = asset.tracks(withMediaType: AVMediaType.video).first else { return CGSize.zero }
         let size = track.naturalSize.applying(track.preferredTransform)
         return CGSize(width: abs(size.width), height: abs(size.height))
+    }
+
+    // swiftlint:disable:next line_length
+    func outlineView(_ outlineView: NSOutlineView, validateDrop info: NSDraggingInfo, proposedItem item: Any?, proposedChildIndex index: Int) -> NSDragOperation {
+        return NSDragOperation.copy
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, acceptDrop info: NSDraggingInfo, item: Any?, childIndex index: Int) -> Bool {
+
+        if let items = info.draggingPasteboard.pasteboardItems {
+            for item in items {
+                if #available(OSX 10.13, *) {
+                    if let str = item.string(forType: .fileURL) {
+                        let surl = URL(fileURLWithPath: str).standardized
+                        debugLog("received drop \(surl)")
+                        if let isDir = surl.isDirectory {
+                            if isDir {
+                                debugLog("processing dir")
+                                self.processPathForVideos(url: surl)
+                            }
+                        }
+                    }
+                } else {
+                    // Fallback on earlier versions
+                }
+            }
+        }
+        return true
     }
 }
 
@@ -450,6 +537,38 @@ extension Dictionary {
     mutating func switchKey(fromKey: Key, toKey: Key) {
         if let entry = removeValue(forKey: fromKey) {
             self[toKey] = entry
+        }
+    }
+}
+
+extension URL {
+    var isDirectory: Bool? {
+        do {
+            let values = try self.resourceValues(
+                forKeys: Set([URLResourceKey.isDirectoryKey])
+            )
+            return values.isDirectory
+        } catch { return nil }
+    }
+}
+
+extension CustomVideoController: NSMenuDelegate {
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        let row = folderOutlineView.clickedRow
+        guard row != -1 else { return }
+        let rowItem = folderOutlineView.item(atRow: row)
+
+        if (rowItem as? Folder) != nil {
+            menuRemoveVideo.isHidden = true
+            menuRemoveFolderAndVideos.isHidden = false
+        } else if (rowItem as? Asset) != nil {
+            menuRemoveVideo.isHidden = false
+            menuRemoveFolderAndVideos.isHidden = true
+        }
+
+        // Mark the clicked item here
+        for item in menu.items {
+            item.representedObject = rowItem
         }
     }
 }

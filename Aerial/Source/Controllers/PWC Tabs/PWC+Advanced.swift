@@ -18,20 +18,20 @@ extension PreferencesWindowController {
         if preferences.logToDisk {
             logToDiskCheckbox.state = .on
         }
-        if preferences.logMilliseconds {
-            logMillisecondsButton.state = .on
-        }
-        if preferences.synchronizedMode {
-            synchronizedModeCheckbox.state = .on
-        }
+
+        muteSoundCheckbox.state = PrefsAdvanced.muteSound ? .on : .off
+
+        // Grab preferred language as proper string
+        currentLocaleLabel.stringValue = getPreferredLanguage()
+
+        let poisp = PoiStringProvider.sharedInstance
+        languagePopup.selectItem(at: poisp.getLanguagePosition())
+
+//        secondaryMarginHorizontalTextfield.stringValue = String(preferences.marginX!)
+//        secondaryMarginVerticalTextfield.stringValue = String(preferences.marginY!)
+
     }
     // MARK: - Advanced panel
-
-    @IBAction func logMillisecondsClick(_ button: NSButton) {
-        let onState = button.state == .on
-        preferences.logMilliseconds = onState
-        debugLog("UI logMilliseconds: \(onState)")
-    }
 
     @IBAction func logButtonClick(_ sender: NSButton) {
         logTableView.reloadData()
@@ -106,10 +106,10 @@ extension PreferencesWindowController {
         showLogBottomClick.isHidden = false
     }
 
-    @IBAction func synchronizedModeClick(_ sender: NSButton) {
+    @IBAction func muteSoundClick(_ sender: NSButton) {
         let onState = sender.state == .on
-        preferences.synchronizedMode = onState
-        debugLog("UI synchronizedMode \(onState)")
+        PrefsAdvanced.muteSound = onState
+        debugLog("UI muteSound : \(onState)")
     }
 
     @IBAction func moveOldVideosClick(_ sender: Any) {
@@ -141,4 +141,26 @@ extension PreferencesWindowController {
         }
 
     }
+
+    // MARK: - Language picker
+
+    @IBAction func languagePopupChange(_ sender: NSPopUpButton) {
+        debugLog("UI languageChange: \(sender.indexOfSelectedItem)")
+        let poisp = PoiStringProvider.sharedInstance
+        preferences.ciOverrideLanguage = poisp.getLanguageStringFromPosition(pos: sender.indexOfSelectedItem)
+    }
+
+    func getPreferredLanguage() -> String {
+        let printOutputLocale: NSLocale = NSLocale(localeIdentifier: Locale.preferredLanguages[0])
+        if let deviceLanguageName: String = printOutputLocale.displayName(forKey: .identifier, value: Locale.preferredLanguages[0]) {
+            if #available(OSX 10.12, *) {
+                return "Preferred language: \(deviceLanguageName) [\(printOutputLocale.languageCode)]"
+            } else {
+                return "Preferred language: \(deviceLanguageName)"
+            }
+        } else {
+            return ""
+        }
+    }
+
 }

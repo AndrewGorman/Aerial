@@ -157,7 +157,7 @@ class ManifestLoader {
         // Start with a shuffled list, we may have synchronized seed shuffle
         var shuffled: [AerialVideo]
         let preferences = Preferences.sharedInstance
-        if preferences.synchronizedMode {
+        /*if preferences.synchronizedMode {
             if #available(OSX 10.11, *) {
                 let date = Date()
                 let calendar = NSCalendar.current
@@ -172,7 +172,9 @@ class ManifestLoader {
             }
         } else {
             shuffled = loadedManifest.shuffled()
-        }
+        }*/
+        // Somehow code above doesn't work anymore, force disabling it for everyone for now
+        shuffled = loadedManifest.shuffled()
 
         for video in shuffled {
             // We exclude videos not in rotation
@@ -206,22 +208,27 @@ class ManifestLoader {
         }
     }
 
-    func randomVideo(excluding: [AerialVideo]) -> AerialVideo? {
+    func randomVideo(excluding: [AerialVideo]) -> (AerialVideo?, Bool) {
+        var shouldLoop = false
         let timeManagement = TimeManagement.sharedInstance
         let (shouldRestrictByDayNight, restrictTo) = timeManagement.shouldRestrictPlaybackToDayNightVideo()
 
         // We may need to regenerate a playlist!
         if playlist.isEmpty || restrictTo != playlistRestrictedTo || shouldRestrictByDayNight != playlistIsRestricted {
             generatePlaylist(isRestricted: shouldRestrictByDayNight, restrictedTo: restrictTo)
+            if playlist.count == 1 {
+                debugLog("playlist only has one element, looping!")
+                shouldLoop = true
+            }
         }
 
         // If not pluck one from current playlist and return that
         if !playlist.isEmpty {
             lastPluckedFromPlaylist = playlist.removeFirst()
-            return lastPluckedFromPlaylist
+            return (lastPluckedFromPlaylist, shouldLoop)
         } else {
             // If we don't have any playlist, something's got awfully wrong so deal with that!
-            return findBestEffortVideo()
+            return (findBestEffortVideo(), shouldLoop)
         }
     }
 
@@ -404,12 +411,12 @@ class ManifestLoader {
                 // customvideos.json
                 var cacheFileUrl = URL(fileURLWithPath: cacheDirectory as String)
                 cacheFileUrl.appendPathComponent("customvideos.json")
-                if FileManager.default.fileExists(atPath: cacheFileUrl.absoluteString) {
+                if FileManager.default.fileExists(atPath: cacheFileUrl.path) {
                     debugLog("loading custom file : \(cacheFileUrl)")
                     let ndata = try Data(contentsOf: cacheFileUrl)
                     customVideoFolders = try CustomVideoFolders(data: ndata)
                 } else {
-                    debugLog("No customvideos.json at : \(cacheFileUrl)")
+                    debugLog("No customvideos.json at : \(cacheFileUrl.path)")
                 }
             }
         } catch {
@@ -449,16 +456,17 @@ class ManifestLoader {
                         url1080p = URL(fileURLWithPath: asset.url).absoluteString
                     }
 
+                    let urls: [VideoFormat: String] = [.v1080pH264: url1080p,
+                                                       .v1080pHEVC: url1080p,
+                                                       .v1080pHDR: url1080p,
+                                                       .v4KHEVC: url4K,
+                                                       .v4KHDR: url4K, ]
                     let video = AerialVideo(id: asset.id,
                                                 name: folder.label,
                                                 secondaryName: asset.accessibilityLabel,
                                                 type: "video",
                                                 timeOfDay: asset.time,
-                                                url1080pH264: url1080p,
-                                                url1080pHEVC: "",
-                                                url1080pHDR: "",
-                                                url4KHEVC: url4K,
-                                                url4KHDR: "",
+                                                urls: urls,
                                                 manifest: .customVideos,
                                                 poi: [:],
                                                 communityPoi: asset.pointsOfInterest)
@@ -568,6 +576,7 @@ class ManifestLoader {
 
     // Check if the Manifests are saved in our cache directory
     func areManifestsCached() -> Bool {
+        // swiftlint:disable:next line_length
         return isManifestCached(manifest: .tvOS10) && isManifestCached(manifest: .tvOS11) && isManifestCached(manifest: .tvOS12) && isManifestCached(manifest: .tvOS13) && isManifestCached(manifest: .tvOS13Strings)
     }
 
@@ -723,14 +732,17 @@ class ManifestLoader {
                 let url4KHEVC = item["url-4K-SDR"] as? String
                 let url4KHDR = item["url-4K-HDR"] as? String
                 let name = item["accessibilityLabel"] as! String
+
+                let urls: [VideoFormat: String] = [.v1080pH264: url1080pH264 ?? "",
+                                                   .v1080pHEVC: url1080pHEVC ?? "",
+                                                   .v1080pHDR: url1080pHDR ?? "",
+                                                   .v4KHEVC: url4KHEVC ?? "",
+                                                   .v4KHDR: url4KHDR ?? "", ]
                 var secondaryName = ""
                 // We may have a secondary name
                 if let mergename = poiStringProvider.getCommunityName(id: id) {
                     secondaryName = mergename
                 }
-/*                if let mergeName = mergeName[id] {
-                    secondaryName = mergeName
-                }*/
 
                 let timeOfDay = "day"   // TODO, this is hardcoded as it's no longer available in the modern JSONs
                 let type = "video"
@@ -752,11 +764,7 @@ class ManifestLoader {
                         secondaryName: secondaryName,           // Optional
                         type: type,                             // Not sure the point of this one ?
                         timeOfDay: timeOfDay,
-                        url1080pH264: url1080pH264 ?? "",
-                        url1080pHEVC: url1080pHEVC ?? "",
-                        url1080pHDR: url1080pHDR ?? "",
-                        url4KHEVC: url4KHEVC ?? "",
-                        url4KHDR: url4KHDR ?? "",
+                        urls: urls,
                         manifest: manifest,
                         poi: poi ?? [:],
                         communityPoi: communityPoi)
@@ -765,7 +773,7 @@ class ManifestLoader {
                 }
             }
         } catch {
-            errorLog("Error retrieving content listing")
+            errorLog("Error retrieving content listing (new)")
             return
         }
     }
@@ -813,22 +821,29 @@ class ManifestLoader {
                         if foundDupe != nil {
                             foundDupe!.sources.append(manifest)
 
-                            if foundDupe?.url1080pH264 == "" {
-                                foundDupe?.url1080pH264 = url
+                            if foundDupe?.urls[.v1080pH264] == "" {
+                                foundDupe?.urls[.v1080pH264] = url
                             }
                         }
                     } else {
-                        var url1080phevc = ""
-                        var url1080phdr = ""
-                        var url4khevc = ""
-                        var url4khdr = ""
+                        var url1080pHEVC = ""
+                        var url1080pHDR = ""
+                        var url4KHEVC = ""
+                        var url4KHDR = ""
+
                         // Check if we have some HEVC urls to merge
                         if let val = mergeInfo[id] {
-                            url1080phevc = val["url-1080-SDR"]!
-                            url1080phdr = val["url-1080-HDR"]!
-                            url4khevc = val["url-4K-SDR"]!
-                            url4khdr = val["url-4K-HDR"]!
+                            url1080pHEVC = val["url-1080-SDR"]!
+                            url1080pHDR = val["url-1080-HDR"]!
+                            url4KHEVC = val["url-4K-SDR"]!
+                            url4KHDR = val["url-4K-HDR"]!
                         }
+
+                        let urls: [VideoFormat: String] = [.v1080pH264: url,
+                                                           .v1080pHEVC: url1080pHEVC,
+                                                           .v1080pHDR: url1080pHDR,
+                                                           .v4KHEVC: url4KHEVC,
+                                                           .v4KHDR: url4KHDR, ]
 
                         // Now we can finally add...
                         let video = AerialVideo(id: id,             // Must have
@@ -836,11 +851,7 @@ class ManifestLoader {
                             secondaryName: secondaryName,
                             type: type,         // Not sure the point of this one ?
                             timeOfDay: timeOfDay,
-                            url1080pH264: url,
-                            url1080pHEVC: url1080phevc,
-                            url1080pHDR: url1080phdr,
-                            url4KHEVC: url4khevc,
-                            url4KHDR: url4khdr,
+                            urls: urls,
                             manifest: manifest,
                             poi: poi ?? [:],
                             communityPoi: communityPoi)
@@ -850,7 +861,7 @@ class ManifestLoader {
                 }
             }
         } catch {
-            errorLog("Error retrieving content listing")
+            errorLog("Error retrieving content listing (old)")
             return
         }
     }
@@ -881,8 +892,8 @@ class ManifestLoader {
         for video in processedVideos {
             if id == video.id {
                 return (true, video)
-            } else if url1080pH264 != "" && video.url1080pH264 != "" {
-                if URL(string: url1080pH264)?.lastPathComponent == URL(string: video.url1080pH264)?.lastPathComponent {
+            } else if url1080pH264 != "" && video.urls[.v1080pH264] != "" {
+                if URL(string: url1080pH264)?.lastPathComponent == URL(string: video.urls[.v1080pH264]!)?.lastPathComponent {
                     return (true, video)
                 }
             }
@@ -893,7 +904,6 @@ class ManifestLoader {
 
     // MARK: - Old video management
     // Try to estimate how many old (unlinked) files we have
-    // swiftlint:disable:next cyclomatic_complexity
     func getOldFilesEstimation() -> (String, Int) {
         // loadedManifests contains the full deduplicated list of videos
         debugLog("Looking for outdated files")
@@ -902,7 +912,7 @@ class ManifestLoader {
             warnLog("We have no videos in the manifest")
             return ("Can't estimate duplicates", 0)
         }
-        guard let cacheDirectory = VideoCache.cacheDirectory else {
+        guard let cacheDirectory = VideoCache.appSupportDirectory else {
             warnLog("No cache directory")
             return ("Can't estimate duplicates", 0)
         }
@@ -915,24 +925,12 @@ class ManifestLoader {
             let directoryContent = try fileManager.contentsOfDirectory(at: cacheDirectoryUrl, includingPropertiesForKeys: nil)
             let videoFileURLs = directoryContent.filter { $0.pathExtension == "mov" }
 
-            // We check the 3 fields
+            // We check all formats we may have
             for fileURL in videoFileURLs {
                 var found = false
                 for video in loadedManifest {
-                    if video.url1080pH264 != "" {
-                        if fileURL.lastPathComponent == URL(string: video.url1080pH264)?.lastPathComponent {
-                            found = true
-                            break
-                        }
-                    }
-                    if video.url1080pHEVC != "" {
-                        if fileURL.lastPathComponent == URL(string: video.url1080pHEVC)?.lastPathComponent {
-                            found = true
-                            break
-                        }
-                    }
-                    if video.url4KHEVC != "" {
-                        if fileURL.lastPathComponent == URL(string: video.url4KHEVC)?.lastPathComponent {
+                    for format in VideoFormat.allCases where video.urls[format] != "" {
+                        if fileURL.lastPathComponent == URL(string: video.urls[format]!)?.lastPathComponent {
                             found = true
                             break
                         }
@@ -956,7 +954,6 @@ class ManifestLoader {
         return ("\(foundOldFiles) old files found", foundOldFiles)
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
     func moveOldVideos() {
         debugLog("move old videos")
         let cacheDirectory = VideoCache.appSupportDirectory!
@@ -992,24 +989,12 @@ class ManifestLoader {
             let directoryContent = try fileManager.contentsOfDirectory(at: cacheDirectoryUrl, includingPropertiesForKeys: nil)
             let videoFileURLs = directoryContent.filter { $0.pathExtension == "mov" }
 
-            // We check the 3 fields
+            // We check the 5 fields
             for fileURL in videoFileURLs {
                 var found = false
                 for video in loadedManifest {
-                    if video.url1080pH264 != "" {
-                        if fileURL.lastPathComponent == URL(string: video.url1080pH264)?.lastPathComponent {
-                            found = true
-                            break
-                        }
-                    }
-                    if video.url1080pHEVC != "" {
-                        if fileURL.lastPathComponent == URL(string: video.url1080pHEVC)?.lastPathComponent {
-                            found = true
-                            break
-                        }
-                    }
-                    if video.url4KHEVC != "" {
-                        if fileURL.lastPathComponent == URL(string: video.url4KHEVC)?.lastPathComponent {
+                    for format in VideoFormat.allCases where video.urls[format] != "" {
+                        if fileURL.lastPathComponent == URL(string: video.urls[format]!)?.lastPathComponent {
                             found = true
                             break
                         }
@@ -1031,10 +1016,9 @@ class ManifestLoader {
         }
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
     func trashOldVideos() {
         debugLog("trash old videos")
-        let cacheDirectory = VideoCache.cacheDirectory!
+        let cacheDirectory = VideoCache.appSupportDirectory!
         var cacheResourcesString = cacheDirectory
 
         let dateFormatter = DateFormatter()
@@ -1067,24 +1051,12 @@ class ManifestLoader {
             let directoryContent = try fileManager.contentsOfDirectory(at: cacheDirectoryUrl, includingPropertiesForKeys: nil)
             let videoFileURLs = directoryContent.filter { $0.pathExtension == "mov" }
 
-            // We check the 3 fields
+            // We check the 5 fields
             for fileURL in videoFileURLs {
                 var found = false
                 for video in loadedManifest {
-                    if video.url1080pH264 != "" {
-                        if fileURL.lastPathComponent == URL(string: video.url1080pH264)?.lastPathComponent {
-                            found = true
-                            break
-                        }
-                    }
-                    if video.url1080pHEVC != "" {
-                        if fileURL.lastPathComponent == URL(string: video.url1080pHEVC)?.lastPathComponent {
-                            found = true
-                            break
-                        }
-                    }
-                    if video.url4KHEVC != "" {
-                        if fileURL.lastPathComponent == URL(string: video.url4KHEVC)?.lastPathComponent {
+                    for format in VideoFormat.allCases where video.urls[format] != "" {
+                        if fileURL.lastPathComponent == URL(string: video.urls[format]!)?.lastPathComponent {
                             found = true
                             break
                         }
